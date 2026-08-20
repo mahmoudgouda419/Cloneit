@@ -17,20 +17,28 @@ import {
 import { Input } from "@/components/ui/input";
 import { useState } from "react";
 
-const formSchema = z.object({
-  username: z.string().min(2).max(50),
-});
-
 type FormType = "sign-in" | "sign-up";
 
+const authFormSchema = (formType: FormType) => {
+  return z.object({
+    email: z.string().email(),
+    fullName:
+      formType === "sign-up"
+        ? z.string().min(2).max(50)
+        : z.string().optional(),
+  });
+};
+
 const AuthForm = ({ type }: { type: FormType }) => {
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const formSchema = authFormSchema(type);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      username: "",
+      fullName: "",
+      email: "",
     },
   });
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
@@ -105,7 +113,7 @@ const AuthForm = ({ type }: { type: FormType }) => {
                 alt={"loader"}
                 width={24}
                 height={24}
-                className={"animate-spint ml-2"}
+                className={"ml-2 animate-spin"}
               />
             )}
           </Button>
