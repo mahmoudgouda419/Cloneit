@@ -1,10 +1,12 @@
 "use server";
 import { ID, Query } from "node-appwrite";
-import { createAdminClient } from "@/lib/appwrite";
+import { createAdminClient, createSessionClient } from "@/lib/appwrite";
 import { appwriteConfig } from "@/lib/appwrite/config";
 import { parseStrinify } from "@/lib/utils";
 import { cookies } from "next/headers";
 import { strict } from "node:assert";
+import { avatarPlaceholderUrl } from "@/constants";
+import { email } from "zod/v4";
 
 const getUserByEmail = async (email: string) => {
   const { databases } = await createAdminClient();
@@ -54,8 +56,7 @@ export const createAccount = async ({
       {
         fullName,
         email,
-        avatar:
-          "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSWsxdqP42H9mqojLHcEK_25Tr_kZun1OEm9jePhCCoQA&s=10",
+        avatar: avatarPlaceholderUrl,
         accountId,
       },
     );
@@ -84,4 +85,15 @@ export const verifySecret = async ({
   } catch (error) {
     handleError(error, "failed to verify secret");
   }
+};
+export const getCurrentUser = async () => {
+  const { databases, account } = await createSessionClient();
+  const result = await account.get();
+  const user = await databases.listDocuments(
+    appwriteConfig.databaseId,
+    appwriteConfig.usersCollectionId,
+    [Query.equal("accountId", result.$id)],
+  );
+  if (user.total <= 0) return null;
+  return parseStrinify(user.documents[0]);
 };
