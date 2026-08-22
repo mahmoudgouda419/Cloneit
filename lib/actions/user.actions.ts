@@ -1,12 +1,12 @@
 "use server";
-import { ID, Query } from "node-appwrite";
+
 import { createAdminClient, createSessionClient } from "@/lib/appwrite";
 import { appwriteConfig } from "@/lib/appwrite/config";
-import { parseStrinify } from "@/lib/utils";
+import { Query, ID } from "node-appwrite";
+import { parseStringify } from "@/lib/utils";
 import { cookies } from "next/headers";
-import { strict } from "node:assert";
 import { avatarPlaceholderUrl } from "@/constants";
-import { email } from "zod/v4";
+import { redirect } from "next/navigation";
 
 const getUserByEmail = async (email: string) => {
   const { databases } = await createAdminClient();
@@ -62,7 +62,7 @@ export const createAccount = async ({
     );
   }
 
-  return parseStrinify({ accountId });
+  return parseStringify({ accountId });
 };
 
 export const verifySecret = async ({
@@ -81,19 +81,51 @@ export const verifySecret = async ({
       sameSite: "strict",
       secure: true,
     });
-    return parseStrinify({ sessionId: session.$id });
+    return parseStringify({ sessionId: session.$id });
   } catch (error) {
     handleError(error, "failed to verify secret");
   }
 };
 export const getCurrentUser = async () => {
-  const { databases, account } = await createSessionClient();
-  const result = await account.get();
-  const user = await databases.listDocuments(
-    appwriteConfig.databaseId,
-    appwriteConfig.usersCollectionId,
-    [Query.equal("accountId", result.$id)],
-  );
-  if (user.total <= 0) return null;
-  return parseStrinify(user.documents[0]);
+  try {
+    const { databases, account } = await createSessionClient();
+    const result = await account.get();
+    const user = await databases.listDocuments(
+      appwriteConfig.databaseId,
+      appwriteConfig.usersCollectionId,
+      [Query.equal("accountId", result.$id)],
+    );
+    if (user.total <= 0) return null;
+    return parseStringify(user.documents[0]);
+  } catch (error) {
+    console.log("No authenticated user:", error);
+    return null;
+  }
+};
+
+export const signOutUser = async () => {
+  const { account } = await createSessionClient();
+  try {
+    await account.deleteSession("current");
+    (await cookies()).delete("appwrite-session");
+  } catch (error) {
+    handleError(error, "failed to signout user");
+  } finally {
+    redirect("/sign-in");
+  }
+};
+
+export const signInUser = async ({ email }: { email: string }) => {
+  try {
+    const existingUser = await getUserByEmail(email);
+
+    if (existingUser) {
+      await sendEmailOTP({ email });
+      return parseStringify({ accountId: existingUser.accountId });
+    }
+
+    return parseStringify({ accounId: null, error: "User not found" });
+  } catch (error) {
+    handleError(error, "failed to sign in user");
+  }
 };
