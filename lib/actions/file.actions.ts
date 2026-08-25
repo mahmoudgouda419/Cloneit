@@ -55,17 +55,13 @@ export const uploadFile = async ({
   }
 };
 
-const createQueries = (
-  currentUser: Models.Document,
-) => {
+const createQueries = (currentUser: Models.Document) => {
   const queries = [
     Query.or([
       Query.equal("owner", [currentUser.$id]),
       Query.contains("users", [currentUser.email]),
     ]),
   ];
-
-
 
   return queries;
 };
@@ -85,5 +81,30 @@ export const getFiles = async () => {
     return parseStringify(files);
   } catch (error) {
     handleError(error, "Failed to get files");
+  }
+};
+
+export const renameFile = async ({
+  fileId,
+  name,
+
+  path,
+}: RenameFileProps) => {
+  const { databases } = await createAdminClient();
+
+  try {
+    const newName = `${name}`;
+    const updatedFile = await databases.updateDocument(
+      appwriteConfig.databaseId,
+      appwriteConfig.filesCollectionId,
+      fileId,
+      {
+        name: newName,
+      },
+    );
+    revalidatePath(path);
+    return parseStringify(updatedFile);
+  } catch (error) {
+    handleError(error, "Failed to rename file");
   }
 };
