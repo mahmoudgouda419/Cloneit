@@ -3,12 +3,18 @@
 import React, { useEffect, useState } from "react";
 import Image from "next/image";
 import { Input } from "@/components/ui/input";
-import { useParams, useRouter, useSearchParams } from "next/navigation";
+import {
+  useParams,
+  usePathname,
+  useRouter,
+  useSearchParams,
+} from "next/navigation";
 
 import { Models } from "node-appwrite";
 import { getFiles } from "@/lib/actions/file.actions";
 import Thumbnail from "@/components/Thumbnail";
 import FormattedDateTime from "@/components/FormattedDateTime";
+import { useDebounce } from "use-debounce";
 
 const Search = () => {
   const [query, setQuery] = React.useState("");
@@ -17,15 +23,23 @@ const Search = () => {
   const [results, setResults] = useState<Models.Document[]>([]);
   const [open, setOpen] = React.useState(false);
   const router = useRouter();
+  const path = usePathname();
+  const [debouncedQuery] = useDebounce(query, 300);
 
   useEffect(() => {
     const fetchFiles = async () => {
-      const files = await getFiles({ searchText: query });
+      if (debouncedQuery.length === 0) {
+        setResults([]);
+        setOpen(false);
+        return router.push(path.replace(searchParams.toString(), ""));
+      }
+
+      const files = await getFiles({ types: [], searchText: debouncedQuery });
       setResults(files.documents);
       setOpen(true);
     };
     fetchFiles();
-  }, [query]);
+  }, [debouncedQuery]);
 
   useEffect(() => {
     if (!searchQuery) {
@@ -38,7 +52,7 @@ const Search = () => {
     setResults([]);
 
     router.push(
-      `/${file.type === "video" ? "media" : file.type + "s"}?query=${query}`,
+      `/${file.type === "video" || file.type === "audio" ? "media" : file.type + "s"}?query=${query}`,
     );
   };
 
