@@ -9,6 +9,8 @@ import ActionDropdown from "@/components/ActionDropdown";
 import { Separator } from "@/components/ui/separator";
 import { Chart } from "@/components/Chart";
 
+export const dynamic = "force-dynamic";
+
 const Dashboard = async () => {
   // Parallel requests
   const [files, totalSpace] = await Promise.all([
